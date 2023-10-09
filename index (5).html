@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Game</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        const character = {
+            x: 50,
+            y: 50,
+            width: 20,
+            height: 20,
+            speed: 5,
+            facing: "right",
+        };
+        
+        const bullets = [];
+        const zombies = [];
+        let gameOver = false;
+        let canFire = true;
+        
+        function drawCharacter() {
+            ctx.fillStyle = "blue";
+            ctx.fillRect(character.x, character.y, character.width, character.height);
+        }
+        
+        function drawBullets() {
+            ctx.fillStyle = "red";
+            for (let bullet of bullets) {
+                ctx.fillRect(bullet.x, bullet.y, 5, 5);
+            }
+        }
+        
+        function drawZombies() {
+            ctx.fillStyle = "green";
+            for (let zombie of zombies) {
+                ctx.fillRect(zombie.x, zombie.y, 20, 20);
+            }
+        }
+        
+        function createZombie() {
+            const spawnX = Math.random() * canvas.width;
+            const spawnY = Math.random() * canvas.height;
+            
+            const dx = character.x - spawnX;
+            const dy = character.y - spawnY;
+            const angle = Math.atan2(dy, dx);
+            
+            const zombie = {
+                x: spawnX,
+                y: spawnY,
+                speedX: Math.cos(angle) * (1 + Math.random() * 2),
+                speedY: Math.sin(angle) * (1 + Math.random() * 2),
+            };
+            zombies.push(zombie);
+        }
+        
+        function update() {
+            if (gameOver) {
+                return;
+            }
+            
+            if (bullets.length > 0) {
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    bullets[i].x += bullets[i].speedX;
+                    bullets[i].y += bullets[i].speedY;
+                    if (
+                        bullets[i].x < 0 || bullets[i].x > canvas.width ||
+                        bullets[i].y < 0 || bullets[i].y > canvas.height
+                    ) {
+                        bullets.splice(i, 1);
+                    }
+                }
+            }
+            
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                const zombie = zombies[i];
+                zombie.x += zombie.speedX;
+                zombie.y += zombie.speedY;
+                if (
+                    zombie.x < 0 || zombie.x > canvas.width ||
+                    zombie.y < 0 || zombie.y > canvas.height
+                ) {
+                    zombies.splice(i, 1);
+                }
+            }
+            
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                for (let j = zombies.length - 1; j >= 0; j--) {
+                    const bullet = bullets[i];
+                    const zombie = zombies[j];
+                    
+                    if (
+                        bullet.x < zombie.x + 20 &&
+                        bullet.x + 5 > zombie.x &&
+                        bullet.y < zombie.y + 20 &&
+                        bullet.y + 5 > zombie.y
+                    ) {
+                        bullets.splice(i, 1);
+                        zombies.splice(j, 1);
+                        break;
+                    }
+                }
+            }
+            
+            if (Math.random() < 0.02) {
+                createZombie();
+            }
+            
+            for (let zombie of zombies) {
+                if (
+                    character.x < zombie.x + 20 &&
+                    character.x + character.width > zombie.x &&
+                    character.y < zombie.y + 20 &&
+                    character.y + character.height > zombie.y
+                ) {
+                    gameOver = true;
+                    clearInterval(gameInterval);
+                    alert("Game over!");
+                }
+            }
+        }
+        
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function gameLoop() {
+            clearCanvas();
+            drawCharacter();
+            drawBullets();
+            drawZombies();
+            update();
+        }
+        
+        let gameInterval = setInterval(gameLoop, 1000 / 60);
+        
+        document.addEventListener("keydown", (event) => {
+            if (gameOver) {
+                return;
+            }
+            
+            switch (event.key) {
+                case "ArrowUp":
+                    if (character.y > 0) {
+                        character.y -= character.speed;
+                        character.facing = "up";
+                    }
+                    break;
+                case "ArrowDown":
+                    if (character.y < canvas.height - character.height) {
+                        character.y += character.speed;
+                        character.facing = "down";
+                    }
+                    break;
+                case "ArrowLeft":
+                    if (character.x > 0) {
+                        character.x -= character.speed;
+                        character.facing = "left";
+                    }
+                    break;
+                case "ArrowRight":
+                    if (character.x < canvas.width - character.width) {
+                        character.x += character.speed;
+                        character.facing = "right";
+                    }
+                    break;
+            }
+        });
+        
+        document.addEventListener("keydown", (event) => {
+            if (gameOver) {
+                return;
+            }
+            
+            switch (event.key) {
+                case " ":
+                    if (canFire) {
+                        canFire = false;
+                        const bulletSpeed = 5;
+                        switch (character.facing) {
+                            case "up":
+                                bullets.push({ x: character.x + character.width / 2, y: character.y, speedX: 0, speedY: -bulletSpeed });
+                                break;
+                            case "down":
+                                bullets.push({ x: character.x + character.width / 2, y: character.y + character.height, speedX: 0, speedY: bulletSpeed });
+                                break;
+                            case "left":
+                                bullets.push({ x: character.x, y: character.y + character.height / 2, speedX: -bulletSpeed, speedY: 0 });
+                                break;
+                            case "right":
+                                bullets.push({ x: character.x + character.width, y: character.y + character.height / 2, speedX: bulletSpeed, speedY: 0 });
+                                break;
+                        }
+                        
+                        setTimeout(() => {
+                            canFire = true;
+                        }, 500);
+                    }
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
